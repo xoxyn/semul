@@ -4,22 +4,18 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+
+	"github.com/xoxyn/semul/internal/domain"
 )
 
-type Prospect struct {
-	Company           string
-	Email             string
-	IdentifiedProblem string
-}
-
-func Read(r io.Reader) ([]Prospect, error) {
+func Read(r io.Reader) ([]domain.Prospect, error) {
 	reader := csv.NewReader(r)
 
 	if _, err := reader.Read(); err != nil {
 		return nil, err
 	}
 
-	var prospects []Prospect
+	var prospects []domain.Prospect
 
 	for {
 		record, err := reader.Read()
@@ -33,7 +29,7 @@ func Read(r io.Reader) ([]Prospect, error) {
 			return nil, fmt.Errorf("expected 3 columns, got %d", len(record))
 		}
 
-		prospects = append(prospects, Prospect{
+		prospects = append(prospects, domain.Prospect{
 			Company:           record[0],
 			Email:             record[1],
 			IdentifiedProblem: record[2],
