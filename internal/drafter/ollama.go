@@ -3,36 +3,67 @@ package drafter
 import (
 	"context"
 	"fmt"
-	"log"
+	"strings"
 
 	"github.com/ollama/ollama/api"
 )
 
-func Draft() {
-	ctx := context.Background()
-	client, err := api.ClientFromEnvironment()
-	if err != nil {
-		log.Fatal(err)
-	}
+type Prospect struct {
+	Company           string
+	Email             string
+	IdentifiedProblem string
+}
+
+type DraftEmail struct {
+	Subject string
+	Body    string
+}
+
+func Draft(ctx context.Context, client *api.Client, prospect Prospect) (DraftEmail, error) {
+	prompt := fmt.Sprintf(`
+Write a concise, professional cold outreach email.
+
+Our goal is to introduce our software and business workflow automation services,
+explain how we could address the identified problem, and invite a conversation.
+
+Company: %s
+Identified problem: %s
+
+Do not invent facts or claim solutions we cannot verify.
+Return exactly:
+Subject: <email subject>
+Body:
+<email body>
+`, prospect.Company, prospect.IdentifiedProblem)
 
 	req := &api.GenerateRequest{
 		Model:  "llama3.2",
-		Prompt: "how many planets are there?",
-
-		// set streaming to false
+		Prompt: strings.TrimSpace(prompt),
 		Stream: new(bool),
 	}
 
-	respFunc := func(resp api.GenerateResponse) error {
-		// Only print the response here; GenerateResponse has a number of other
-		// interesting fields you want to examine.
-		fmt.Println(resp.Response)
+	var response strings.Builder
+
+	err := client.Generate(ctx, req, func(resp api.GenerateResponse) error {
+		response.WriteString(resp.Response)
 		return nil
+	})
+	if err != nil {
+		return DraftEmail{}, fmt.Errorf("generate email draft: %w", err)
 	}
 
-	err = client.Generate(ctx, req, respFunc)
-	if err != nil {
-		log.Fatal(err)
-	}
+	fmt.Printf("RAW RESPONSE:\n%q\n", response.String())
+	return parseDraft(response.String())
 }
 
+func parseDraft(response string) (DraftEmail, error) {
+	subject, body, found := strings.Cut(strings.TrimSpace(response), "\nBody:")
+	if !found || !strings.HasPrefix(subject, "Subject:") {
+		return DraftEmail{}, fmt.Errorf("invalid draft format")
+	}
+
+	return DraftEmail{
+		Subject: strings.TrimSpace(strings.TrimPrefix(subject, "Subject:")),
+		Body:    strings.TrimSpace(body),
+	}, nil
+}
