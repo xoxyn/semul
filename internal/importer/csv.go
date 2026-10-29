@@ -3,29 +3,38 @@ package importer
 import (
 	"encoding/csv"
 	"io"
-	"log"
-	"strings"
 )
 
-func Read() []string {
-	in := `first_name,last_name,username
-"Rob","Pike",rob
-Ken,Thompson,ken
-"Robert","Griesemer","gri"
-`
-	r := csv.NewReader(strings.NewReader(in))
-	var result []string
+type Prospect struct {
+	Company          string
+	Email            string
+	IdentifiedProblem string
+}
+
+func Read(r io.Reader) ([]Prospect, error) {
+	reader := csv.NewReader(r)
+
+	if _, err := reader.Read(); err != nil {
+		return nil, err
+	}
+
+	var prospects []Prospect
 
 	for {
-		record, err := r.Read()
+		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		result = append(result, record...)
+		prospects = append(prospects, Prospect{
+			Company:          record[0],
+			Email:            record[1],
+			IdentifiedProblem: record[2],
+		})
 	}
-	return result
+
+	return prospects, nil
 }
