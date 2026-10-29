@@ -2,12 +2,14 @@ package importer
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
+	"log"
 )
 
 type Prospect struct {
-	Company          string
-	Email            string
+	Company           string
+	Email             string
 	IdentifiedProblem string
 }
 
@@ -28,10 +30,13 @@ func Read(r io.Reader) ([]Prospect, error) {
 		if err != nil {
 			return nil, err
 		}
+		if len(record) != 3 {
+			return nil, fmt.Errorf("expected 3 columns, got %d", len(record))
+		}
 
 		prospects = append(prospects, Prospect{
-			Company:          record[0],
-			Email:            record[1],
+			Company:           record[0],
+			Email:             record[1],
 			IdentifiedProblem: record[2],
 		})
 	}
