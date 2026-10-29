@@ -9,22 +9,22 @@ import (
 )
 
 func TestParseDraft(t *testing.T) {
-	input := `Subject: Workflow Automation
-Body:
-Hi Acme,
-We help businesses automate manual workflows.`
+	response := `{
+        "subject": "Streamline Logistics Reporting with Automation",
+        "body": "Dear Recipient,\n\nWe help businesses automate manual workflows."
+    }`
 
-	got, err := parseDraft(input)
+	draft, err := parseDraft(response)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if got.Subject != "Workflow Automation" {
-		t.Errorf("got subject %q", got.Subject)
+	if draft.Subject != "Streamline Logistics Reporting with Automation" {
+		t.Errorf("unexpected subject: %s", draft.Subject)
 	}
 
-	if got.Body == "" {
-		t.Error("expected a non-empty body")
+	if draft.Body == "" {
+		t.Error("expected non-empty body")
 	}
 }
 

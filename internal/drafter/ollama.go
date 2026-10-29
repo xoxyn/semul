@@ -2,6 +2,7 @@ package drafter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,8 +16,8 @@ type Prospect struct {
 }
 
 type DraftEmail struct {
-	Subject string
-	Body    string
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
 }
 
 func Draft(ctx context.Context, client *api.Client, prospect Prospect) (DraftEmail, error) {
@@ -38,7 +39,15 @@ Body:
 
 	req := &api.GenerateRequest{
 		Model:  "llama3.2",
-		Prompt: strings.TrimSpace(prompt),
+		Prompt: prompt,
+		Format: json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"subject": {"type": "string"},
+			"body": {"type": "string"}
+		},
+		"required": ["subject", "body"]
+	}`),
 		Stream: new(bool),
 	}
 
@@ -57,13 +66,15 @@ Body:
 }
 
 func parseDraft(response string) (DraftEmail, error) {
-	subject, body, found := strings.Cut(strings.TrimSpace(response), "\nBody:")
-	if !found || !strings.HasPrefix(subject, "Subject:") {
-		return DraftEmail{}, fmt.Errorf("invalid draft format")
+	var draft DraftEmail
+
+	if err := json.Unmarshal([]byte(response), &draft); err != nil {
+		return DraftEmail{}, fmt.Errorf("parse draft: %w", err)
 	}
 
-	return DraftEmail{
-		Subject: strings.TrimSpace(strings.TrimPrefix(subject, "Subject:")),
-		Body:    strings.TrimSpace(body),
-	}, nil
+	if draft.Subject == "" || draft.Body == "" {
+		return DraftEmail{}, fmt.Errorf("incomplete draft")
+	}
+
+	return draft, nil
 }
