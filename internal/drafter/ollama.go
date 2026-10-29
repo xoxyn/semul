@@ -1,3 +1,4 @@
+
 package drafter
 
 import (
@@ -7,47 +8,56 @@ import (
 	"strings"
 
 	"github.com/ollama/ollama/api"
+	"github.com/xoxyn/semul/internal/domain"
 )
 
-type Prospect struct {
-	Company           string
-	Email             string
-	IdentifiedProblem string
-}
-
-type DraftEmail struct {
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-}
-
-func Draft(ctx context.Context, client *api.Client, prospect Prospect) (DraftEmail, error) {
+func Draft(
+	ctx context.Context,
+	client *api.Client,
+	sender domain.Sender,
+	prospect domain.Prospect,
+) (domain.DraftEmail, error) {
 	prompt := fmt.Sprintf(`
 Write a concise, professional cold outreach email.
 
-Our goal is to introduce our software and business workflow automation services,
-explain how we could address the identified problem, and invite a conversation.
-
+SENDER:
+Name: %s
 Company: %s
+
+RECIPIENT:
+Company: %s
+Email: %s
 Identified problem: %s
 
-Do not invent facts or claim solutions we cannot verify.
-Return exactly:
-Subject: <email subject>
-Body:
-<email body>
-`, prospect.Company, prospect.IdentifiedProblem)
+OBJECTIVE:
+Introduce the sender's software and business workflow automation services.
+Explain how these services could address the identified problem.
+Invite the recipient to a brief conversation.
+
+INSTRUCTIONS:
+- Address the recipient using their company name, not a placeholder.
+- Sign off using the sender's actual name and company.
+- Never use placeholders such as [Your Name] or [Recipient].
+- Never invent a recipient's personal name.
+- Never confuse the sender's company with the recipient's company.
+- Do not invent facts, experience, or results.
+- Keep the email concise and professional.
+
+Return a JSON object containing "subject" and "body".
+`, sender.Name, sender.Company,
+		prospect.Company, prospect.Email, prospect.IdentifiedProblem)
 
 	req := &api.GenerateRequest{
 		Model:  "llama3.2",
-		Prompt: prompt,
+		Prompt: strings.TrimSpace(prompt),
 		Format: json.RawMessage(`{
-		"type": "object",
-		"properties": {
-			"subject": {"type": "string"},
-			"body": {"type": "string"}
-		},
-		"required": ["subject", "body"]
-	}`),
+			"type": "object",
+			"properties": {
+				"subject": {"type": "string"},
+				"body": {"type": "string"}
+			},
+			"required": ["subject", "body"]
+		}`),
 		Stream: new(bool),
 	}
 
@@ -58,22 +68,22 @@ Body:
 		return nil
 	})
 	if err != nil {
-		return DraftEmail{}, fmt.Errorf("generate email draft: %w", err)
+		return domain.DraftEmail{}, fmt.Errorf("generate email draft: %w", err)
 	}
 
-	fmt.Printf("RAW RESPONSE:\n%q\n", response.String())
 	return parseDraft(response.String())
 }
 
-func parseDraft(response string) (DraftEmail, error) {
-	var draft DraftEmail
+func parseDraft(response string) (domain.DraftEmail, error) {
+	var draft domain.DraftEmail
 
 	if err := json.Unmarshal([]byte(response), &draft); err != nil {
-		return DraftEmail{}, fmt.Errorf("parse draft: %w", err)
+		return domain.DraftEmail{}, fmt.Errorf("parse draft: %w", err)
 	}
 
-	if draft.Subject == "" || draft.Body == "" {
-		return DraftEmail{}, fmt.Errorf("incomplete draft")
+	if strings.TrimSpace(draft.Subject) == "" ||
+		strings.TrimSpace(draft.Body) == "" {
+		return domain.DraftEmail{}, fmt.Errorf("incomplete draft")
 	}
 
 	return draft, nil

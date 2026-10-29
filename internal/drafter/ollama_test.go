@@ -1,3 +1,4 @@
+
 package drafter
 
 import (
@@ -6,13 +7,14 @@ import (
 	"testing"
 
 	"github.com/ollama/ollama/api"
+	"github.com/xoxyn/semul/internal/domain"
 )
 
 func TestParseDraft(t *testing.T) {
 	response := `{
-        "subject": "Streamline Logistics Reporting with Automation",
-        "body": "Dear Recipient,\n\nWe help businesses automate manual workflows."
-    }`
+		"subject": "Streamline Logistics Reporting with Automation",
+		"body": "Dear Acme Logistics team,\n\nWe help businesses automate manual workflows."
+	}`
 
 	draft, err := parseDraft(response)
 	if err != nil {
@@ -34,13 +36,18 @@ func TestDraftWithOllama(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	prospect := Prospect{
+	sender := domain.Sender{
+		Name:    "Victor",
+		Company: "Lenor",
+	}
+
+	prospect := domain.Prospect{
 		Company:           "Acme Logistics",
 		Email:             "contact@acme.example",
 		IdentifiedProblem: "Manual logistics reporting",
 	}
 
-	draft, err := Draft(context.Background(), client, prospect)
+	draft, err := Draft(context.Background(), client, sender, prospect)
 	if err != nil {
 		t.Fatal(err)
 	}
