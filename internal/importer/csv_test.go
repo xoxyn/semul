@@ -28,3 +28,37 @@ Globex,info@globex.com,"Slow reporting, repetitive tasks"
 		t.Errorf("unexpected problem: %q", got[1].IdentifiedProblem)
 	}
 }
+
+func TestReadEmptyInput(t *testing.T) {
+	_, err := Read(strings.NewReader(""))
+	if err == nil {
+		t.Fatal("expected error for empty input")
+	}
+}
+
+func TestReadMissingColumns(t *testing.T) {
+	input := "company,email,identified_problems\nAcme,hello@acme.com\n"
+
+	_, err := Read(strings.NewReader(input))
+	if err == nil {
+		t.Fatal("expected error for missing column")
+	}
+}
+
+func TestReadExtraColumns(t *testing.T) {
+	input := "company,email,identified_problems\nAcme,hello@acme.com,Manual work,Extra\n"
+
+	_, err := Read(strings.NewReader(input))
+	if err == nil {
+		t.Fatal("expected error for extra column")
+	}
+}
+
+func TestReadMalformedCSV(t *testing.T) {
+	input := "company,email,identified_problems\nAcme,hello@acme.com,\"unclosed quote\n"
+
+	_, err := Read(strings.NewReader(input))
+	if err == nil {
+		t.Fatal("expected error for malformed CSV")
+	}
+}
