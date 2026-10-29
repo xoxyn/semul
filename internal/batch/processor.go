@@ -2,30 +2,36 @@ package batch
 
 import (
 	"context"
-	"log"
+	"fmt"
 
-	"github.com/ollama/ollama/api"
 	"github.com/xoxyn/semul/internal/domain"
-	"github.com/xoxyn/semul/internal/drafter"
 )
 
-func Process(p []domain.Prospect,
+type DraftFunc func(
 	ctx context.Context,
-	client *api.Client,
 	sender domain.Sender,
-) []domain.EmailJob {
-	var em []domain.EmailJob
-	for _, prop := range p {
-		draft, err := drafter.Draft(ctx, client, sender, prop)
+	prospect domain.Prospect,
+) (domain.DraftEmail, error)
+
+func Process(
+	ctx context.Context,
+	sender domain.Sender,
+	prospects []domain.Prospect,
+	draftFn DraftFunc,
+) ([]domain.EmailJob, error) {
+	var jobs []domain.EmailJob
+
+	for _, prospect := range prospects {
+		draft, err := draftFn(ctx, sender, prospect)
 		if err != nil {
-			log.Printf("Couldn't create draft for: %s", prop.Company)
-			continue
+			return nil, fmt.Errorf("draft for %s: %w", prospect.Company, err)
 		}
-		emailJob := domain.EmailJob{
-			Prospect: prop,
+
+		jobs = append(jobs, domain.EmailJob{
+			Prospect: prospect,
 			Draft:    draft,
-		}
-		em = append(em, emailJob)
+		})
 	}
-	return em
+
+	return jobs, nil
 }
