@@ -1,5 +1,13 @@
 package domain
 
+type DeliveryStatus string
+
+const (
+	NotSent DeliveryStatus = "not_sent"
+	Sent    DeliveryStatus = "sent"
+	Failed  DeliveryStatus = "failed"
+)
+
 type Sender struct {
 	Name    string
 	Company string
