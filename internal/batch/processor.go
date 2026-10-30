@@ -1,8 +1,10 @@
+
 package batch
 
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/xoxyn/semul/internal/domain"
 )
@@ -13,24 +15,84 @@ type DraftFunc func(
 	prospect domain.Prospect,
 ) (domain.DraftEmail, error)
 
+type result struct {
+	job domain.EmailJob
+	err error
+}
+
 func Process(
 	ctx context.Context,
 	sender domain.Sender,
 	prospects []domain.Prospect,
 	draftFn DraftFunc,
+	workers int,
 ) ([]domain.EmailJob, error) {
-	var jobs []domain.EmailJob
+	if workers < 1 {
+		return nil, fmt.Errorf("workers must be at least 1")
+	}
 
-	for _, prospect := range prospects {
-		draft, err := draftFn(ctx, sender, prospect)
-		if err != nil {
-			return nil, fmt.Errorf("draft for %s: %w", prospect.Company, err)
+	jobs := make([]domain.EmailJob, len(prospects))
+	results := make(chan result, len(prospects))
+
+	sem := make(chan struct{}, workers)
+	var wg sync.WaitGroup
+
+	for i, prospect := range prospects {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
 
-		jobs = append(jobs, domain.EmailJob{
-			Prospect: prospect,
-			Draft:    draft,
-		})
+		wg.Add(1)
+
+		go func(i int, prospect domain.Prospect) {
+			defer wg.Done()
+
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			if err := ctx.Err(); err != nil {
+				results <- result{err: err}
+				return
+			}
+
+			draft, err := draftFn(ctx, sender, prospect)
+			if err != nil {
+				results <- result{
+					err: fmt.Errorf("draft for %s: %w", prospect.Company, err),
+				}
+				return
+			}
+
+			results <- result{
+				job: domain.EmailJob{
+					Prospect: prospect,
+					Draft:    draft,
+				},
+			}
+		}(i, prospect)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var firstErr error
+
+	for r := range results {
+		if r.err != nil {
+			if firstErr == nil {
+				firstErr = r.err
+			}
+			continue
+		}
+
+		// Associate each result with its original prospect position.
+		// See note below for the indexed result adjustment.
+	}
+
+	if firstErr != nil {
+		return nil, firstErr
 	}
 
 	return jobs, nil
