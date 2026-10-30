@@ -3,9 +3,10 @@ package domain
 type DeliveryStatus string
 
 const (
-	NotSent DeliveryStatus = "not_sent"
-	Sent    DeliveryStatus = "sent"
-	Failed  DeliveryStatus = "failed"
+    NotSent DeliveryStatus = "not_sent"
+    Sending DeliveryStatus = "sending"
+    Sent    DeliveryStatus = "sent"
+    Failed  DeliveryStatus = "failed"
 )
 
 type Sender struct {
