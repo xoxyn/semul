@@ -19,4 +19,7 @@ type DraftEmail struct {
 type EmailJob struct {
 	Prospect
 	Draft DraftEmail
+
+	Approved bool
+	Status   DeliveryStatus
 }
