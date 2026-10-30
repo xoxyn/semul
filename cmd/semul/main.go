@@ -1,48 +1,74 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/wneessen/go-mail"
+	"github.com/ollama/ollama/api"
+
+	"github.com/xoxyn/semul/internal/batch"
+	"github.com/xoxyn/semul/internal/domain"
+	"github.com/xoxyn/semul/internal/drafter"
+	"github.com/xoxyn/semul/internal/importer"
+	"github.com/xoxyn/semul/internal/mailer"
+	"github.com/xoxyn/semul/internal/tui"
 )
 
 func main() {
-	err := godotenv.Load()
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
+	if len(os.Args) < 2 {
+		return errors.New("usage: semul prospects.csv")
+	}
+
+	if err := godotenv.Load(); err != nil {
+		return fmt.Errorf("load .env: %w", err)
+	}
+
+	smtp, err := mailer.FromEnv()
 	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	message := mail.NewMsg()
-
-	if err := message.From("numterminal@gmail.com"); err != nil {
-		log.Fatalf("failed to set From: %s", err)
+		return err
 	}
 
-	if err := message.To("numterminal2@gmail.com"); err != nil {
-		log.Fatalf("failed to set To: %s", err)
-	}
-
-	message.Subject("My first email with Go")
-	message.SetBodyString(
-		mail.TypeTextPlain,
-		"Hello! This email was sent using Go and Gmail SMTP from semul.",
-	)
-
-	client, err := mail.NewClient(
-		"smtp.gmail.com",
-		mail.WithPort(587),
-		mail.WithSMTPAuth(mail.SMTPAuthPlain),
-		mail.WithUsername(os.Getenv("SMTP_USERNAME")),
-		mail.WithPassword(os.Getenv("SMTP_PASSWORD")),
-	)
+	f, err := os.Open(os.Args[1])
 	if err != nil {
-		log.Fatalf("failed to create mail client: %s", err)
+		return err
+	}
+	defer f.Close()
+
+	prospects, err := importer.Read(f)
+	if err != nil {
+		return fmt.Errorf("read csv: %w", err)
 	}
 
-	if err := client.DialAndSend(message); err != nil {
-		log.Fatalf("failed to send mail: %s", err)
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
 	}
 
-	log.Println("Email sent successfully!")
+	sender := domain.Sender{Name: "John", Company: "Semul"}
+	draftFn := func(
+		ctx context.Context,
+		s domain.Sender,
+		p domain.Prospect,
+	) (domain.DraftEmail, error) {
+		return drafter.Draft(ctx, client, s, p)
+	}
+
+	fmt.Printf("Drafting %d emails...\n", len(prospects))
+
+	jobs, err := batch.Process(context.Background(), sender, prospects, draftFn, 2)
+	if err != nil {
+		return fmt.Errorf("draft emails: %w", err)
+	}
+
+	return tui.Run(jobs, smtp.Send)
 }
