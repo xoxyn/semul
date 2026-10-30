@@ -16,8 +16,9 @@ type DraftFunc func(
 ) (domain.DraftEmail, error)
 
 type result struct {
-	job domain.EmailJob
-	err error
+	index int
+	job   domain.EmailJob
+	err   error
 }
 
 func Process(
@@ -38,10 +39,6 @@ func Process(
 	var wg sync.WaitGroup
 
 	for i, prospect := range prospects {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-
 		wg.Add(1)
 
 		go func(i int, prospect domain.Prospect) {
@@ -51,19 +48,21 @@ func Process(
 			defer func() { <-sem }()
 
 			if err := ctx.Err(); err != nil {
-				results <- result{err: err}
+				results <- result{index: i, err: err}
 				return
 			}
 
 			draft, err := draftFn(ctx, sender, prospect)
 			if err != nil {
 				results <- result{
-					err: fmt.Errorf("draft for %s: %w", prospect.Company, err),
+					index: i,
+					err:   fmt.Errorf("draft for %s: %w", prospect.Company, err),
 				}
 				return
 			}
 
 			results <- result{
+				index: i,
 				job: domain.EmailJob{
 					Prospect: prospect,
 					Draft:    draft,
@@ -87,8 +86,7 @@ func Process(
 			continue
 		}
 
-		// Associate each result with its original prospect position.
-		// See note below for the indexed result adjustment.
+		jobs[r.index] = r.job
 	}
 
 	if firstErr != nil {
