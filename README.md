@@ -53,6 +53,8 @@ The sender name and company are set in `cmd/semul/main.go`.
 
 ## Keys
 
+The TUI's layout and keybindings are inspired by [lazygit](https://github.com/jesseduffield/lazygit).
+
 | Key | Action |
 | --- | --- |
 | `j` / `k` | move |
