@@ -5,12 +5,14 @@
 <h1 align="center">semul</h1>
 
 <p align="center">
-  Draft cold emails with a local LLM, review them in your terminal, send with one key.
+  Semul is a simple tui tool for automating drafting and sending of emails to potential prospects
 </p>
 
----
+<p align="center">
+  <img src="assets/tui.png" alt="semul TUI" width="720">
+</p>
 
-## What it does
+#### How to use it
 
 1. Reads prospects from a CSV
 2. Skips anyone you've already contacted (SQLite)
@@ -18,12 +20,12 @@
 4. Lets you approve and edit drafts in a TUI
 5. Sends approved emails over SMTP, one at a time
 
-## Setup
+#### Setup
 
 **Requirements:** Go, a C compiler (for SQLite), and Ollama running with the model pulled:
 
 ```sh
-ollama pull llama3.2
+ollama pull llama3.2 # or any model of your choice
 ```
 
 **Credentials:** create a `.env` file (use a Gmail [app password](https://myaccount.google.com/apppasswords)):
