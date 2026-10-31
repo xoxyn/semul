@@ -31,3 +31,6 @@ go.work.sum
 
 # Database
 *.db
+
+copy.txt
+*.csv
