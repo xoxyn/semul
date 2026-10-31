@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/tui.png" alt="semul TUI" width="720">
+  <img src="assets/tui.png" alt="semul TUI" width="640">
 </p>
 
 #### How to use it
