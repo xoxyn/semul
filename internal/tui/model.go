@@ -166,7 +166,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			j.Status = domain.Failed
 			j.Approved = false
-			m.logf("%s %s: %v", c("31", "failed"), j.Company, msg.err)
+			if errors.Is(msg.err, domain.ErrAlreadyContacted) {
+				m.logf("%s %s: already contacted", c("33", "skipped"), j.Company)
+			} else {
+				m.logf("%s %s: %v", c("31", "failed"), j.Company, msg.err)
+			}
 		} else {
 			j.Status = domain.Sent
 			m.logf("%s %s", c("36", "sent"), j.Company)
