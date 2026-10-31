@@ -26,6 +26,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.30 // indirect
+	github.com/mattn/go-sqlite3 v1.14.52 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
